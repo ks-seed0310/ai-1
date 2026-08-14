@@ -1,4 +1,4 @@
-name: 🚀 WebGPU AI Auto Training & Save (Binary)
+name: 🚀 WebGPU AI Auto Training & Save (Split Binary)
 
 on:
   push:
@@ -22,12 +22,19 @@ jobs:
         with:
           node-version: 20
 
-      - name: ⚡ 6,700万パラメーターの自動学習を実行（爆速版）
+      - name: ⚡ 自動学習を実行
         run: node train.js
 
-      - name: 📦 賢くなった脳みそ（バイナリ）をリポジトリに自動でコミット＆Push！
+      - name: ⭕【100MB制限突破】バイナリを90MBずつに小分けに分割
         run: |
-          git config --local user.email "github-actions[bot]@://github.com"
+          # 268MBのファイルを90MB単位で weights_part_aa, ab, ac に分割
+          split -b 90m weights.bin weights_part_
+          # 元のデカいファイルは削除してコミット対象外にする
+          rm weights.bin
+
+      - name: 📦 分割した脳みそデータをリポジトリに自動でコミット＆Push！
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add weights.bin
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 AI: 爆速バイナリ脳みそデータ（weights.bin）を更新" && git push)
+          git add weights_part_*
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 AI: 分割バイナリ脳みそデータを更新" && git push)
