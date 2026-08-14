@@ -1,0 +1,33 @@
+name: 🚀 WebGPU AI Auto Training
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # ボタンを押して手動でいつでも実行できるコマンド
+
+jobs:
+  train-ai:
+    runs-on: ubuntu-latest # GitHubが用意してくれる無料の最強Linuxサーバー
+
+    steps:
+      - name: 📂 リポジトリのコードをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🟢 Node.js の環境をセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # WebGPUをサポートする最新のNode.js
+
+      - name: ⚙️ 必要であれば依存関係をインストール
+        run: |
+          if [ -f package.json ]; then npm install; fi
+
+      - name: ⚡ 6,700万パラメーターの自動学習を実行（他責）
+        run: node train.js
+
+      - name: 📦 学習済みの脳みそ（重みデータ）を成果物として保存
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-ai-weights
+          path: weights.json # 書き出した脳みそファイルをダウンロードできるようにする
