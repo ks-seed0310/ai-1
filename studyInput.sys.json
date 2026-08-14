@@ -2,9 +2,9 @@
   { "input": "私 好き 猫", "target": ["I", "like", "cats", "."] },
   { "input": "私 好き 犬", "target": ["I", "like", "dogs", "."] },
   {"input":"僕 好き 犬","target":["I","like","dogs","."]},
-  {"input":"私 は 勉強 が 好き","target":["I","like","to","study","."]},
-  {"input":"私 は 米 を 食べた","target":["I","ate","lice","."]},
+  {"input":"私 は 学習 が 好き","target":["I","like","to","study","."]},
+  {"input":"私 は 米 を 食べ た","target":["I","ate","lice","."]},
   {"input":"私 は 砂糖 を 舐め た","target":["I","lick","ed","suger","."]},
   {"input":"私 は 塩 を 舐め た","target":["I","lick","ed","salt","."]},
-  {"input":"私 は 犬 に ついて 勉強 する","target":["I","study","dogs","."]}
+  {"input":"私 は 犬 に ついて 学習 する","target":["I","study","dogs","."]}
 ]
