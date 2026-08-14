@@ -3,16 +3,20 @@ const fs = require('fs');
 // =========================================================================
 // 1. 共通辞書とロマンスペックの設定
 // =========================================================================
+// ここに単語を何個足しても、下の計算コードは1文字もいじる必要はありません
 const VOCAB = [
-  "<PAD>", "<BOS>", "<EOS>", "<UNK>", 
-  "私", "猫", "好き", "犬",          
-  "I", "cats", "like", ".", "dogs"    
+  "<PAD>", "<BOS>", "<EOS>", "<UNK>", // 0, 1, 2, 3
+  "私", "猫", "好き", "犬",            // 4, 5, 6, 7 (日本語)
+  "I", "cats", "like", ".", "dogs"     // 8, 9, 10, 11, 12 (英語)
 ];
 const VOCAB_SIZE = 65536;  
 const DIMENSIONS = 1024;  
 const WEIGHTS_COUNT = VOCAB_SIZE * DIMENSIONS;
-const LEARNING_RATE = 0.5; // ガツンと学習させて収束を早める
+const LEARNING_RATE = 0.5; 
 
+// =========================================================================
+// 2. 訓練データ（ここに好きな文章を足すだけで自動で部屋が分かれます）
+// =========================================================================
 const trainData = [
   { input: "私 好き 猫", target: ["I", "like", "cats", "."] },
   { input: "私 好き 犬", target: ["I", "like", "dogs", "."] } 
@@ -28,46 +32,48 @@ function softmax(scores) {
   return exps.map(v => v / sumExp);
 }
 
-function getBestWord(probs) {
-  return probs.indexOf(Math.max(...probs));
-}
-
 async function run() {
-  console.log("🚀 超高速バイナリ対応・自動学習エンジンを起動します。");
+  console.log("🚀 真・全自動拡張型AIエンジンを起動します。");
   console.log("🧠 6,700万個の脳みそデータ（約268MB）をメモリに展開中...");
   
   const hWeightsMatrix = new Float32Array(WEIGHTS_COUNT);
 
-  console.log("⏳ 特訓を開始します。GitHubのサーバーで並列計算中...");
+  console.log("⏳ 特訓を開始します。部屋の自動割り当てを実行中...");
 
   // 200回特訓
   for (let epoch = 1; epoch <= 200; epoch++) {
     for (const data of trainData) {
       const inputIds = tokenize(data.input);
       
-      // 手動成功版と完全に同じ、インデックス位置に1.0をセットするアルゴリズム
+      // ⭕【真の自動化アルゴリズム】
+      // 単語のID番号をそのまま1024次元のメーターの位置としてONにする（これで完全な拡張性を確保！）
       const hInputVector = new Float32Array(DIMENSIONS);
-      if (inputIds[0] !== undefined) hInputVector[0] = 1.0; // 「私」
-      if (inputIds[1] !== undefined) hInputVector[1] = 1.0; // 「好き」
-      if (inputIds[2] !== undefined) hInputVector[2] = 1.0; // 「猫」または「犬」
+      inputIds.forEach(id => {
+        if (id < DIMENSIONS) {
+          hInputVector[id] = 1.0; 
+        }
+      });
 
       for (const correctWord of data.target) {
         const correctId = VOCAB.indexOf(correctWord);
 
-        // 予測（Forward）：手動成功版と100%同じインデックス計算
+        // 予測（Forward）：自動で分かれた部屋を使ってスコアを計算
         const resultScores = new Float32Array(VOCAB_SIZE);
         for (let wordId = 0; wordId < VOCAB_SIZE; wordId++) {
           let score = 0;
           const rowOffset = wordId * DIMENSIONS;
-          for (let i = 0; i < DIMENSIONS; i++) {
-            score += hInputVector[i] * hWeightsMatrix[rowOffset + i];
-          }
+          // ONになっている単語の部屋の重みだけをピンポイントで足し算する
+          inputIds.forEach(id => {
+            if (id < DIMENSIONS) {
+              score += hInputVector[id] * hWeightsMatrix[rowOffset + id];
+            }
+          });
           resultScores[wordId] = score;
         }
 
         const hProbs = softmax(resultScores);
 
-        // 誤差修正（Backward）：アルゴリズムのねじれを完全に修正
+        // 誤差修正（Backward）：自動で分かれた部屋の重みだけを正確に修正
         for (let wordId = 0; wordId < VOCAB_SIZE; wordId++) {
           let error = hProbs[wordId];
           if (wordId === correctId) {
@@ -76,9 +82,12 @@ async function run() {
           
           if (error !== 0) {
             const rowOffset = wordId * DIMENSIONS;
-            for (let i = 0; i < DIMENSIONS; i++) {
-              hWeightsMatrix[rowOffset + i] -= LEARNING_RATE * error * hInputVector[i];
-            }
+            // 入力された単語の部屋（次元）の重みだけを自力修正する
+            inputIds.forEach(id => {
+              if (id < DIMENSIONS) {
+                hWeightsMatrix[rowOffset + id] -= LEARNING_RATE * error * hInputVector[id];
+              }
+            });
           }
         }
       }
@@ -87,21 +96,21 @@ async function run() {
 
   console.log("\n✅ 特訓が完了しました！学習成果をテストします...");
 
-  // テスト（手動成功版と100%同じ、シンプルな一発総当たりアルゴリズム）
+  // テスト（完全に自動化された一発総当たりアルゴリズム）
   function testTranslation(testInputText) {
     const testIds = tokenize(testInputText);
     const hInputVector = new Float32Array(DIMENSIONS);
-    // テスト文脈に合わせてインデックスをON
-    if (testInputText.includes("私")) hInputVector[0] = 1.0;
-    if (testInputText.includes("好き")) hInputVector[1] = 1.0;
-    if (testInputText.includes("猫")) hInputVector[2] = 1.0;
-    if (testInputText.includes("犬")) hInputVector[2] = 1.0; // 猫と同じ目的語スロット
+    testIds.forEach(id => {
+      if (id < DIMENSIONS) hInputVector[id] = 1.0;
+    });
 
     const scores = new Float32Array(VOCAB_SIZE);
     for (let wordId = 0; wordId < VOCAB_SIZE; wordId++) {
       let score = 0;
       const rowOffset = wordId * DIMENSIONS;
-      for (let i = 0; i < DIMENSIONS; i++) { score += hInputVector[i] * hWeightsMatrix[rowOffset + i]; }
+      testIds.forEach(id => {
+        if (id < DIMENSIONS) score += hInputVector[id] * hWeightsMatrix[rowOffset + id];
+      });
       scores[wordId] = score;
     }
     
@@ -117,15 +126,9 @@ async function run() {
   await testTranslation("私 好き 猫");
   await testTranslation("私 好き 犬");
 
-  // =========================================================================
-  // 6. 📦 【超高速化】268MBのデータを一瞬で生のバイナリ（weights.bin）に書き出す
-  // =========================================================================
   console.log("\n💾 賢くなった脳みそを『weights.bin』として爆速書き出し中...");
-  
-  // テキスト変換を完全にパスし、生の数字バッファをそのままファイル化（1秒未満）
   const buffer = Buffer.from(hWeightsMatrix.buffer);
   fs.writeFileSync('weights.bin', buffer);
-  
   console.log("📂 バイナリファイルの保存が完了しました！");
 }
 
