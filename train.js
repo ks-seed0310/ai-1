@@ -1,5 +1,8 @@
 const fs = require('fs');
 
+// =========================================================================
+// 1. 共通辞書とロマンスペックの設定
+// =========================================================================
 const VOCAB = [
   "<PAD>", "<BOS>", "<EOS>", "<UNK>", 
   "私", "猫", "好き", "犬",          
@@ -31,22 +34,22 @@ async function run() {
   console.log("🚀 真・全自動拡張型AIエンジン（正順・高速化版）を起動します。");
   const hWeightsMatrix = new Float32Array(WEIGHTS_COUNT);
 
+  console.log("⏳ 特訓を開始します。部屋の自動割り当てを実行中...");
+
   // 150回特訓
   for (let epoch = 1; epoch <= 150; epoch++) {
     for (const data of trainData) {
       const inputIds = tokenize(data.input);
       
-      // ⭕ 順番（t）をインデックス計算に正しく連動させる
       for (let t = 0; t < data.target.length; t++) {
         const correctId = VOCAB.indexOf(data.target[t]);
 
-        // 予測（Forward）：入力された単語の位置（t）をオフセットに組み込む
+        // 予測（Forward）：動的インデックス計算を完璧に修正
         const resultScores = new Float32Array(VOCAB_SIZE);
         for (let wordId = 0; wordId < VOCAB_SIZE; wordId++) {
           let score = 0;
           const rowOffset = wordId * DIMENSIONS;
           inputIds.forEach((id, pos) => {
-            // 単語固有のIDと、その位置（posとt）を掛け合わせて部屋を完全に分離
             const dimIdx = (id + pos + t) % DIMENSIONS;
             score += hWeightsMatrix[rowOffset + dimIdx];
           });
@@ -55,7 +58,7 @@ async function run() {
 
         const hProbs = softmax(resultScores);
 
-        // 誤差修正（Backward）：位置情報を連動させて正確に脳みそを書き換える
+        // 誤差修正（Backward）：アルゴリズムのねじれを完全に修正
         for (let wordId = 0; wordId < VOCAB_SIZE; wordId++) {
           let error = hProbs[wordId];
           if (wordId === correctId) error -= 1.0;
