@@ -1,14 +1,17 @@
-name: 🚀 WebGPU AI Auto Training
+name: 🚀 WebGPU AI Auto Training & Save (Binary)
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch: # ボタンを押して手動でいつでも実行できるコマンド
+  workflow_dispatch:
+
+permissions:
+  contents: write 
 
 jobs:
   train-ai:
-    runs-on: ubuntu-latest # GitHubが用意してくれる無料の最強Linuxサーバー
+    runs-on: ubuntu-latest
 
     steps:
       - name: 📂 リポジトリのコードをチェックアウト
@@ -17,17 +20,14 @@ jobs:
       - name: 🟢 Node.js の環境をセットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # WebGPUをサポートする最新のNode.js
+          node-version: 20
 
-      - name: ⚙️ 必要であれば依存関係をインストール
-        run: |
-          if [ -f package.json ]; then npm install; fi
-
-      - name: ⚡ 6,700万パラメーターの自動学習を実行（他責）
+      - name: ⚡ 6,700万パラメーターの自動学習を実行（爆速版）
         run: node train.js
 
-      - name: 📦 学習済みの脳みそ（重みデータ）を成果物として保存
-        uses: actions/upload-artifact@v4
-        with:
-          name: trained-ai-weights
-          path: weights.json # 書き出した脳みそファイルをダウンロードできるようにする
+      - name: 📦 賢くなった脳みそ（バイナリ）をリポジトリに自動でコミット＆Push！
+        run: |
+          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.name "github-actions[bot]"
+          git add weights.bin
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 AI: 爆速バイナリ脳みそデータ（weights.bin）を更新" && git push)
