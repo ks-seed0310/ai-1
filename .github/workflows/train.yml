@@ -25,16 +25,23 @@ jobs:
       - name: ⚡ 自動学習を実行
         run: node train.js
 
-      - name: ⭕【100MB制限突破】バイナリを90MBずつに小分けに分割
+      - name: 📦【100MB制限突破】バイナリを90MBずつに分割
         run: |
-          # 268MBのファイルを90MB単位で weights_part_aa, ab, ac に分割
           split -b 90m weights.bin weights_part_
-          # 元のデカいファイルは削除してコミット対象外にする
           rm weights.bin
 
-      - name: 📦 分割した脳みそデータをリポジトリに自動でコミット＆Push！
+      - name: 🚀【競合破壊】リポジトリに自動でコミット＆強制Push！
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add weights_part_*
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 AI: 分割バイナリ脳みそデータを更新" && git push)
+          
+          # コミットする変更があるか確認
+          if ! git diff --quiet && ! git diff --staged --quiet; then
+            git commit -m "🤖 AI: 分割バイナリ脳みそデータを更新"
+            # ⭕【最重要】競合を防ぐために、Push直前に最新のリポジトリをpullして整列させる
+            git pull --rebase origin main
+            git push origin main
+          else
+            echo "変更がありません。Pushをスキップします。"
+          fi
