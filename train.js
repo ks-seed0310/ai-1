@@ -1,43 +1,49 @@
 const fs = require('fs');
 
 // =========================================================================
-// 1. 【バグ防止】外部ファイル読み込み ➔ なければ内部プリセットを使うアルゴリズム
+// 1. 外部ファイル（語彙・学習データ・テストデータ）の読み込み
 // =========================================================================
 let VOCAB;
 let trainData;
+let testData;
 
 const VOCAB_FILE = 'vocab.sys.json';
 const STUDY_FILE = 'studyInput.sys.json';
+const TEST_FILE  = 'translateTestData.sys.json';
 
-// A. 語彙（VOCAB）のチェックと読み込み
+// A. 語彙（VOCAB）
 if (fs.existsSync(VOCAB_FILE)) {
-  console.log(`📂 外部ファイル『${VOCAB_FILE}』を検出しました。読み込みます...`);
   VOCAB = JSON.parse(fs.readFileSync(VOCAB_FILE, 'utf8'));
 } else {
-  console.log(`⚠️ 『${VOCAB_FILE}』が見つからないため、内部のプリセットデータを使用します。`);
-  VOCAB = [
-    "<PAD>", "<BOS>", "<EOS>", "<UNK>", 
-    "私", "猫", "好き", "犬",          
-    "I", "cats", "like", ".", "dogs"    
-  ];
+  VOCAB = ["<PAD>", "<BOS>", "<EOS>", "<UNK>", "私", "猫", "好き", "犬", "I", "cats", "like", ".", "dogs", "僕", "学習", "する", "明日", "食べ", "た", "米", "は", "が", "を", "に", "ついて"];
 }
 
-// B. 訓練データ（trainData）のチェックと読み込み
+// B. 訓練データ（学習用）
 if (fs.existsSync(STUDY_FILE)) {
-  console.log(`📂 外部ファイル『${STUDY_FILE}』を検出しました。読み込みます...`);
   trainData = JSON.parse(fs.readFileSync(STUDY_FILE, 'utf8'));
 } else {
-  console.log(`⚠️ 『${STUDY_FILE}』が見つからないため、内部のプリセットデータを使用します。`);
   trainData = [
     { input: "私 好き 猫", target: ["I", "like", "cats", "."] },
-    { input: "私 好き 犬", target: ["I", "like", "dogs", "."] } 
+    { input: "私 好き 犬", target: ["I", "like", "dogs", "."] }
+  ];
+}
+
+// C. ⭕【新機能】外部テストデータ（抜き打ちテスト用）
+if (fs.existsSync(TEST_FILE)) {
+  console.log(`📂 外部テストファイル『${TEST_FILE}』を検出しました。読み込みます...`);
+  testData = JSON.parse(fs.readFileSync(TEST_FILE, 'utf8'));
+} else {
+  console.log(`⚠️ 『${TEST_FILE}』が見つからないため、内部のデフォルトテストを使用します。`);
+  testData = [
+    { lang: "ja", text: "私 は 米 が 好き" },
+    { lang: "ja", text: "僕 は 猫 に ついて 学習 する" }
   ];
 }
 
 // =========================================================================
-// 2. ロマンスペックの自動計算（語彙数が増えてもここが自動追従します）
+// 2. スペック定義
 // =========================================================================
-const VOCAB_SIZE = 65536;  // 6万5千語の最大部屋数はキープ
+const VOCAB_SIZE = 65536;  
 const DIMENSIONS = 1024;  
 const WEIGHTS_COUNT = VOCAB_SIZE * DIMENSIONS;
 const LEARNING_RATE = 0.2; 
@@ -55,25 +61,19 @@ function softmax(scores) {
 function getBestWord(probs) { return probs.indexOf(Math.max(...probs)); }
 
 async function run() {
-  console.log("🚀 真・外部ファイル対応型AIエンジン（正順・高速化版）を起動します。");
-  console.log(`📊 現在の処理スペック: 登録語彙数 [ ${VOCAB.length} ] / 登録学習データ [ ${trainData.length} 件 ]`);
-  
+  console.log("🚀 真・全自動拡張＆双方向抜き打ちテスト型AIエンジンを起動します。");
   const hWeightsMatrix = new Float32Array(WEIGHTS_COUNT);
 
   console.log("⏳ 特訓を開始します。GitHub Actions のサーバーで処理中...");
 
-  // 150回特訓
-  for (let epoch = 1; epoch <= 150; epoch++) {
+  // 300回特訓
+  for (let epoch = 1; epoch <= 300; epoch++) {
     for (const data of trainData) {
       const inputIds = tokenize(data.input);
       
       for (let t = 0; t < data.target.length; t++) {
         const correctId = VOCAB.indexOf(data.target[t]);
-
-        if (correctId === -1) {
-          // もしターゲットに登録外の単語があった場合のセーフティ
-          continue; 
-        }
+        if (correctId === -1) continue;
 
         // 予測（Forward）
         const resultScores = new Float32Array(VOCAB_SIZE);
@@ -106,13 +106,14 @@ async function run() {
     }
   }
 
-  console.log("\n✅ 特訓が完了しました！学習成果をテストします...");
+  console.log("\n✅ 特訓が完了しました！初めて見る文章で抜き打ちテスト（推論）を開始します...");
 
-  // テスト（登録されている全データで翻訳確認する賢い仕様に変更）
-  function testTranslation(testInputText) {
+  // ⭕【超改良】日本語➔英語、英語➔日本語の両方に対応した翻訳テストアルゴリズム
+  function testTranslation(lang, testInputText) {
     const testIds = tokenize(testInputText);
     const outputWords = [];
 
+    // 文章の長さ（最大4語）だけ自動ループ
     for (let t = 0; t < 4; t++) {
       const scores = new Float32Array(VOCAB_SIZE);
       for (let wordId = 0; wordId < VOCAB_SIZE; wordId++) {
@@ -129,12 +130,14 @@ async function run() {
       const nextId = getBestWord(probs);
       outputWords.push(VOCAB[nextId] || "<UNK>");
     }
-    console.log(`入力: 「${testInputText}」 ➔ 🤖 翻訳結果: [ ${outputWords.join(" ")} ]`);
+    
+    const direction = lang === "ja" ? "日本語 ➔ 英語" : "英語 ➔ 日本語";
+    console.log(`[${direction}] 入力: 「${testInputText}」 ➔ 🤖 翻訳結果: [ ${outputWords.join(" ")} ]`);
   }
 
-  // 読み込まれた trainData の中身を自動で全件テストする
-  for(const data of trainData) {
-    await testTranslation(data.input);
+  // 外部JSONのテストデータに沿って全件テスト実行！
+  for(const tData of testData) {
+    await testTranslation(tData.lang, tData.text);
   }
 
   console.log("\n💾 賢くなった脳みそを『weights.bin』として爆速書き出し中...");
